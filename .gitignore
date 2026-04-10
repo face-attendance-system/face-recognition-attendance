@@ -1,0 +1,26 @@
+# Python
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+
+# Virtual Environment
+venv/
+.env/
+
+# VS / IDE
+.vs/
+.vscode/
+
+# Mac
+.DS_Store
+
+# Logs
+*.log
+
+# Database (if any local files later)
+*.db
+
+# Build
+dist/
+build/

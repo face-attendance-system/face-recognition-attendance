@@ -1,0 +1,144 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>AI Attendance System</title>
+
+<style>
+    body {
+        font-family: Arial, sans-serif;
+        background: linear-gradient(135deg, #1e3c72, #2a5298);
+        color: white;
+        text-align: center;
+        margin: 0;
+    }
+
+    h1 {
+        margin-top: 20px;
+    }
+
+    .container {
+        display: flex;
+        justify-content: center;
+        gap: 40px;
+        margin-top: 30px;
+        flex-wrap: wrap;
+    }
+
+    .card {
+        background: rgba(255,255,255,0.1);
+        padding: 20px;
+        border-radius: 15px;
+        width: 300px;
+        backdrop-filter: blur(10px);
+        box-shadow: 0 8px 20px rgba(0,0,0,0.3);
+    }
+
+    input {
+        width: 90%;
+        padding: 10px;
+        margin: 8px;
+        border-radius: 8px;
+        border: none;
+        outline: none;
+    }
+
+    button {
+        background: #00c6ff;
+        border: none;
+        padding: 10px 20px;
+        border-radius: 20px;
+        cursor: pointer;
+        color: black;
+        font-weight: bold;
+        transition: 0.3s;
+    }
+
+    button:hover {
+        background: #00ffcc;
+        transform: scale(1.05);
+    }
+
+    .result {
+        margin-top: 10px;
+        font-size: 14px;
+        color: #00ffcc;
+    }
+</style>
+</head>
+
+<body>
+
+<h1>🎓 AI Face Attendance System</h1>
+
+<div class="container">
+
+    <!-- Register Card -->
+    <div class="card">
+        <h2>Register Student</h2>
+        <input id="name" placeholder="Name">
+        <input id="enrollment" placeholder="Enrollment Number">
+        <input id="embedding" placeholder="0.1,0.2,0.3">
+        <button onclick="register()">Register</button>
+        <div id="registerResult" class="result"></div>
+    </div>
+
+    <!-- Recognize Card -->
+    <div class="card">
+        <h2>Recognize Face</h2>
+        <input id="recEmbed" placeholder="0.1,0.2,0.3">
+        <button onclick="recognize()">Recognize</button>
+        <div id="recognizeResult" class="result"></div>
+    </div>
+
+</div>
+
+<script>
+    const BASE_URL = "http://127.0.0.1:8000";
+
+    function parseEmbedding(str) {
+        return str.split(",").map(Number);
+    }
+
+    async function register() {
+        const data = {
+            name: document.getElementById("name").value,
+            enrollment_number: document.getElementById("enrollment").value,
+            face_embedding: parseEmbedding(document.getElementById("embedding").value)
+        };
+
+        const res = await fetch(`${BASE_URL}/register/`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify(data)
+        });
+
+        const result = await res.json();
+        document.getElementById("registerResult").innerText = "✅ Registered: " + result.name;
+    }
+
+    async function recognize() {
+        const data = {
+            face_embedding: parseEmbedding(document.getElementById("recEmbed").value)
+        };
+
+        const res = await fetch(`${BASE_URL}/recognize/`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify(data)
+        });
+
+        const result = await res.json();
+
+        if (result.match_found) {
+            document.getElementById("recognizeResult").innerText =
+                "🎯 Match: " + result.student_name;
+        } else {
+            document.getElementById("recognizeResult").innerText =
+                "❌ No match found";
+        }
+    }
+</script>
+
+</body>
+</html>
