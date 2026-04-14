@@ -1,0 +1,296 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>AI Attendance System - Registration</title>
+<style>
+    body {
+        font-family: Arial, sans-serif;
+        background: linear-gradient(135deg, #1e3c72, #2a5298);
+        color: white;
+        text-align: center;
+        margin: 0;
+        padding: 50px;
+    }
+   .container {
+        display: flex;
+        justify-content: center;
+    }
+   .card {
+        background: rgba(255, 255, 255, 0.1);
+        padding: 30px;
+        border-radius: 15px;
+        width: 400px;
+        backdrop-filter: blur(10px);
+        box-shadow: 0 8px 20px rgba(0,0,0,0.3);
+    }
+    h2 {
+        margin-top: 0;
+        font-size: 24px;
+        letter-spacing: 1px;
+    }
+    
+    /* Upload Video Box Styling */
+   .upload-box {
+        border: 2px dashed #00c6ff;
+        padding: 40px 20px;
+        margin: 20px 0;
+        border-radius: 10px;
+        background: rgba(0, 0, 0, 0.2);
+    }
+   .upload-box button {
+        background: transparent;
+        border: 2px solid #00c6ff;
+        color: #00c6ff;
+        padding: 10px 20px;
+        font-size: 16px;
+        cursor: pointer;
+        border-radius: 5px;
+        transition: 0.3s;
+    }
+   .upload-box button:hover {
+        background: #00c6ff;
+        color: black;
+    }
+    #fileName {
+        margin-top: 10px;
+        font-size: 13px;
+        color: #aaa;
+    }
+
+    /* Student Details Styling */
+   .details-section {
+        text-align: left;
+        margin-top: 20px;
+    }
+   .details-section h3 {
+        margin-bottom: 15px;
+        font-size: 18px;
+        border-bottom: 1px solid rgba(255, 255, 255, 0.2);
+        padding-bottom: 5px;
+    }
+    input[type="text"] {
+        width: 90%;
+        padding: 12px;
+        margin: 10px 0;
+        border-radius: 8px;
+        border: none;
+        outline: none;
+        display: block;
+        background: rgba(255, 255, 255, 0.9);
+        color: #333;
+    }
+
+    /* Submit Button Styling */
+   .submit-btn {
+        background: #00c6ff;
+        border: none;
+        padding: 12px 30px;
+        border-radius: 20px;
+        cursor: pointer;
+        color: black;
+        font-weight: bold;
+        font-size: 16px;
+        margin-top: 25px;
+        transition: 0.3s;
+        width: 100%;
+    }
+   .submit-btn:hover {
+        background: #00ffcc;
+        transform: scale(1.05);
+    }
+   .result {
+        margin-top: 15px;
+        font-size: 14px;
+        font-weight: bold;
+    }
+    .progress-container {
+    display: none;
+    margin-top: 20px;
+    text-align: left;
+    }
+    .progress-bar-bg {
+        background: rgba(255,255,255,0.15);
+        border-radius: 20px;
+        height: 12px;
+        width: 100%;
+        overflow: hidden;
+    }
+    .progress-bar-fill {
+        height: 100%;
+        width: 0%;
+        border-radius: 20px;
+        background: linear-gradient(90deg, #00c6ff, #00ffcc);
+        animation: fillBar 120s ease-in-out forwards;
+    }
+    @keyframes fillBar {
+        0%   { width: 0%; }
+        30%  { width: 40%; }   /* video uploading */
+        60%  { width: 65%; }   /* retinaface processing */
+        85%  { width: 85%; }   /* embedding generation */
+        100% { width: 95%; }   /* waiting for db commit */
+    }
+    .progress-steps {
+        margin-top: 10px;
+        font-size: 13px;
+        color: #aaa;
+    }
+    .progress-steps span.active {
+        color: #00ffcc;
+        font-weight: bold;
+    }
+</style>
+</head>
+<body>
+
+<div class="container">
+    <div class="card">
+        <h2>Register Student to Database</h2>
+
+        <div class="upload-box">
+            <input type="file" id="videoUpload" accept="video/mp4,video/x-m4v,video/*" style="display: none;" onchange="updateFileName()">
+            <button onclick="document.getElementById('videoUpload').click()">Upload Video</button>
+            <div id="fileName">No file chosen</div>
+        </div>
+
+        <div class="details-section">
+            <h3>Enter Student Details:</h3>
+            <input type="text" id="studentName" placeholder="Name">
+            <input type="text" id="enrollmentNo" placeholder="Enrollment No.">
+        </div>
+
+
+        <button class="submit-btn" id="submitBtn" onclick="submitRegistration()">Submit</button>
+
+        <div class="progress-container" id="progressContainer">
+            <div class="progress-bar-bg">
+                <div class="progress-bar-fill" id="progressBar"></div>
+            </div>
+            <div class="progress-steps" id="progressSteps">
+                ⏳ Uploading video...
+            </div>
+        </div>
+
+        <div id="statusMessage" class="result"></div>
+    </div>
+</div>
+
+<script>
+    // Updates the text below the upload button when a faculty member selects a video
+    function updateFileName() {
+        const fileInput = document.getElementById('videoUpload');
+        const fileNameDisplay = document.getElementById('fileName');
+        if (fileInput.files.length > 0) {
+            fileNameDisplay.textContent = fileInput.files[0].name;
+            fileNameDisplay.style.color = "#00ffcc";
+        } else {
+            fileNameDisplay.textContent = "No file chosen";
+            fileNameDisplay.style.color = "#aaa";
+        }
+    }
+
+    // Handles the submission to FastAPI
+    async function submitRegistration() {
+        const fileInput = document.getElementById('videoUpload').files;
+        const name = document.getElementById('studentName').value;
+        const enrollment = document.getElementById('enrollmentNo').value;
+        const statusMessage = document.getElementById('statusMessage');
+        const submitBtn = document.getElementById('submitBtn');
+        const progressContainer = document.getElementById('progressContainer');
+        const progressBar = document.getElementById('progressBar');
+        const progressSteps = document.getElementById('progressSteps');
+
+        if (fileInput.length === 0 || !name || !enrollment) {
+            statusMessage.innerText = "⚠️ Please upload a video and fill in all details.";
+            statusMessage.style.color = "#ff4c4c";
+            return;
+        }
+
+        // Lock UI and show progress bar
+        submitBtn.disabled = true;
+        submitBtn.style.opacity = "0.5";
+        statusMessage.innerText = "";
+        progressContainer.style.display = "block";
+
+        // Reset and restart the animation each submission
+        progressBar.style.animation = "none";
+        progressBar.offsetHeight; // force reflow
+        progressBar.style.animation = "fillBar 120s ease-in-out forwards";
+
+        // Cycle through step messages while waiting
+        const steps = [
+            "⏳ Uploading video to server...",
+            "🔍 Extracting frames...",
+            "👤 Detecting & aligning faces with RetinaFace...",
+            "🧠 Generating ArcFace embeddings...",
+            "💾 Saving to database..."
+        ];
+        let stepIndex = 0;
+        progressSteps.innerHTML = `<span class="active">${steps[0]}</span>`;
+        const stepInterval = setInterval(() => {
+            stepIndex = Math.min(stepIndex + 1, steps.length - 1);
+            progressSteps.innerHTML = `<span class="active">${steps[stepIndex]}</span>`;
+        }, 24000);
+
+        const formData = new FormData();
+        formData.append("video_file", fileInput[0]);
+        formData.append("name", name);
+        formData.append("enrollment_number", enrollment);
+
+        try {
+            const response = await fetch("http://127.0.0.1:8000/register-video/", {
+                method: "POST",
+                body: formData
+            });
+
+            clearInterval(stepInterval);
+
+            // Snap bar to 100% on completion
+            progressBar.style.animation = "none";
+            progressBar.style.width = "100%";
+            progressBar.style.transition = "width 0.4s ease";
+
+            const result = await response.json();
+
+            if (response.ok) {
+                const s = result.summary;
+                progressSteps.innerHTML = `<span class="active">✅ Done!</span>`;
+                setTimeout(() => {
+                    progressContainer.style.display = "none";
+                    statusMessage.innerHTML = `
+                        ✅ <b>${result.name}</b> registered successfully!<br><br>
+                        📊 <b>Extraction Summary:</b><br>
+                        Candidates sampled &nbsp;: ${s.total_candidates_sampled}<br>
+                        Dropped (blurry) &nbsp;&nbsp;&nbsp;: ${s.dropped_blurry}<br>
+                        Dropped (duplicate) &nbsp;: ${s.dropped_duplicate}<br>
+                        Dropped (no face) &nbsp;&nbsp;: ${s.dropped_no_face}<br>
+                        Dropped (emb error) &nbsp;: ${s.dropped_embedding_error}<br>
+                        ─────────────────────<br>
+                        ✅ Clean faces &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;: ${s.clean_faces_extracted}<br>
+                        ✅ Augmented faces &nbsp;&nbsp;&nbsp;: ${s.augmented_faces_generated}<br>
+                        ✅ Total embeddings &nbsp;&nbsp;: ${s.total_embeddings_saved}
+                    `;
+                    statusMessage.style.color = "#00ffcc";
+                    statusMessage.style.textAlign = "left";
+                    statusMessage.style.lineHeight = "1.8";
+                }, 500);
+            } else {
+                progressContainer.style.display = "none";
+                statusMessage.innerText = "❌ Error: " + result.detail;
+                statusMessage.style.color = "#ff4c4c";
+            }
+        } catch (error) {
+            clearInterval(stepInterval);
+            progressContainer.style.display = "none";
+            statusMessage.innerText = "❌ Error: " + error.message;
+            statusMessage.style.color = "#ff4c4c";
+        } finally {
+            // Always re-enable submit button
+            submitBtn.disabled = false;
+            submitBtn.style.opacity = "1";
+    }
+}
+</script>
+
+</body>
+</html>

@@ -1,0 +1,251 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>AI Attendance System - Classroom Review</title>
+<style>
+    body {
+        font-family: Arial, sans-serif;
+        background: linear-gradient(135deg, #1e3c72, #2a5298);
+        color: white;
+        margin: 0;
+        padding: 30px;
+    }
+    h2 { text-align: center; margin-bottom: 30px; }
+    
+   .main-container {
+        display: flex;
+        gap: 30px;
+        max-width: 1200px;
+        margin: 0 auto;
+    }
+
+    /* Left Panel (Upload & Checklist) */
+   .left-panel {
+        flex: 1;
+        background: rgba(255, 255, 255, 0.1);
+        padding: 25px;
+        border-radius: 15px;
+        backdrop-filter: blur(10px);
+        display: flex;
+        flex-direction: column;
+        gap: 20px;
+    }
+
+   .upload-box {
+        border: 2px dashed #00c6ff;
+        padding: 30px;
+        text-align: center;
+        border-radius: 10px;
+        background: rgba(0, 0, 0, 0.2);
+    }
+    
+    input[type="text"] {
+        width: 90%;
+        padding: 10px;
+        margin-bottom: 10px;
+        border-radius: 5px;
+        border: none;
+    }
+
+    button {
+        background: #00c6ff;
+        border: none;
+        padding: 12px 20px;
+        border-radius: 8px;
+        cursor: pointer;
+        color: black;
+        font-weight: bold;
+        transition: 0.3s;
+    }
+    button:hover { background: #00ffcc; }
+
+   .checklist-container {
+        background: rgba(0,0,0,0.3);
+        padding: 15px;
+        border-radius: 8px;
+        max-height: 350px;
+        overflow-y: auto;
+    }
+   .student-row {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        padding: 8px 0;
+        border-bottom: 1px solid rgba(255,255,255,0.1);
+    }
+   .student-row input[type="checkbox"] {
+        transform: scale(1.5);
+        cursor: pointer;
+    }
+
+    /* Right Panel (Output Image) */
+   .right-panel {
+        flex: 1.5;
+        background: rgba(255, 255, 255, 0.1);
+        padding: 25px;
+        border-radius: 15px;
+        backdrop-filter: blur(10px);
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+    }
+    
+    #outputImage {
+        max-width: 100%;
+        max-height: 600px;
+        border-radius: 10px;
+        display: none;
+        box-shadow: 0 5px 15px rgba(0,0,0,0.5);
+    }
+    
+   .status { color: #00ffcc; font-weight: bold; margin-top: 10px;}
+</style>
+</head>
+<body>
+
+<h2>🎓 Smart Classroom Attendance</h2>
+
+<div class="main-container">
+    <div class="left-panel">
+        <input type="text" id="subjectName" placeholder="Enter Subject Name (e.g., Mathematics)">
+        
+        <div class="upload-box">
+            <input type="file" id="groupPhoto" accept="image/*" style="display: none;" onchange="document.getElementById('fileName').innerText = this.files[0].name">
+            <button onclick="document.getElementById('groupPhoto').click()">Choose Group Photo</button>
+            <div id="fileName" style="margin-top: 10px; font-size: 13px; color: #aaa;">No image chosen</div>
+            <button style="margin-top: 15px; width: 100%;" onclick="analyzePhoto()" id="analyzeBtn">Analyze Image</button>
+        </div>
+
+        <div id="statusMsg" class="status"></div>
+
+        <h3>Verification Checklist</h3>
+        <div class="checklist-container" id="checklist">
+            <p style="color: #aaa; text-align: center;">Upload an image to generate the checklist.</p>
+        </div>
+
+        <button style="background: #28a745; color: white;" onclick="submitFinalAttendance()" id="submitBtn" disabled>Confirm & Mark Attendance</button>
+    </div>
+
+    <div class="right-panel">
+        <h3 style="margin-top: 0;">Output Image</h3>
+        <img id="outputImage" alt="Analyzed Classroom">
+        <p id="imagePlaceholder" style="color: #aaa;">The processed image with bounding boxes will appear here.</p>
+    </div>
+</div>
+
+<script>
+    let globalProofUrl = "";
+    let globalChecklistData = [];
+
+    async function analyzePhoto() {
+        const fileInput = document.getElementById('groupPhoto').files;
+        const statusMsg = document.getElementById('statusMsg');
+        const analyzeBtn = document.getElementById('analyzeBtn');
+
+        if (fileInput.length == 0) {
+            statusMsg.innerText = "⚠️ Please select an image first.";
+            statusMsg.style.color = "#ff4c4c";
+            return;
+        }
+
+        analyzeBtn.disabled = true;
+        statusMsg.innerText = "⏳ AI is processing the image... Please wait.";
+        statusMsg.style.color = "#00c6ff";
+
+        const formData = new FormData();
+        formData.append("file", fileInput[0]);
+
+        try {
+            const response = await fetch("http://127.0.0.1:8000/analyze-group-photo/", {
+                method: "POST",
+                body: formData
+            });
+            const result = await response.json();
+
+            if (response.ok) {
+                statusMsg.innerText = "✅ Analysis complete. Please review the checklist.";
+                statusMsg.style.color = "#00ffcc";
+                
+                // Display the Image
+                globalProofUrl = result.proof_image_url;
+                document.getElementById('outputImage').src = globalProofUrl;
+                document.getElementById('outputImage').style.display = "block";
+                document.getElementById('imagePlaceholder').style.display = "none";
+
+                // Generate the Checklist
+                globalChecklistData = result.checklist;
+                const checklistDiv = document.getElementById('checklist');
+                checklistDiv.innerHTML = ""; 
+
+                globalChecklistData.forEach(student => {
+                    const isChecked = student.is_present? "checked" : "";
+                    const color = student.is_present? "#00ffcc" : "#ff4c4c";
+                    
+                    checklistDiv.innerHTML += `
+                        <div class="student-row">
+                            <span style="color: ${color}">${student.name} (${student.enrollment_number})</span>
+                            <input type="checkbox" id="chk_${student.student_id}" ${isChecked} data-confidence="${student.confidence_score}">
+                        </div>
+                    `;
+                });
+
+                document.getElementById('submitBtn').disabled = false;
+            } else {
+                statusMsg.innerText = "❌ Error analyzing image.";
+                statusMsg.style.color = "#ff4c4c";
+            }
+        } catch (error) {
+            statusMsg.innerText = "❌ Server error.";
+            statusMsg.style.color = "#ff4c4c";
+        }
+        analyzeBtn.disabled = false;
+    }
+
+    async function submitFinalAttendance() {
+        const subjectName = document.getElementById('subjectName').value;
+        const statusMsg = document.getElementById('statusMsg');
+
+        if (!subjectName) {
+            statusMsg.innerText = "⚠️ Please enter a Subject Name.";
+            statusMsg.style.color = "#ff4c4c";
+            return;
+        }
+
+        // Gather the final state of the checkboxes based on teacher's review
+        const finalRecords = globalChecklistData.map(student => {
+            const checkbox = document.getElementById(`chk_${student.student_id}`);
+            return {
+                student_id: student.student_id,
+                is_present: checkbox.checked,
+                confidence_score: parseFloat(checkbox.getAttribute('data-confidence'))
+            };
+        });
+
+        const payload = {
+            subject_name: subjectName,
+            proof_image_url: globalProofUrl, // Saving the file path reference
+            records: finalRecords
+        };
+
+        try {
+            const response = await fetch("http://127.0.0.1:8000/submit-attendance/", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify(payload)
+            });
+            const result = await response.json();
+
+            if (response.ok) {
+                statusMsg.innerText = "✅ Attendance officially recorded in the database!";
+                document.getElementById('submitBtn').disabled = true;
+            }
+        } catch (error) {
+            statusMsg.innerText = "❌ Failed to save attendance.";
+        }
+    }
+</script>
+
+</body>
+</html>
